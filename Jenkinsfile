@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'node:16-jdk' // Uses Node.js 16 with Java JDK
-            args '-u root:root' // Runs as root to avoid file permission issues
+            image 'node:16' // Use the standard Node.js 16 image
+            args '-u root:root' // Run as root to avoid permission issues
         }
     }
     
@@ -27,6 +27,15 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh 'npm test' // Runs the unit tests
+            }
+        }
+        
+        stage('Install Java') {
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y openjdk-11-jre-headless
+                '''
             }
         }
         
@@ -58,7 +67,7 @@ pipeline {
             steps {
                 script {
                     // Builds a Docker image of the app, tagging it with the build ID
-                    docker.build("anuj12309/nodejs-app:${env.BUILD_ID}")
+                    docker.build("sasori12309-arch/nodejs-app:${env.BUILD_ID}")
                 }
             }
         }
@@ -70,7 +79,7 @@ pipeline {
                     sh "echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin"
                     // Pushes the image to your Docker Hub repository
                     docker.withRegistry('', 'dockerhub-credentials') {
-                        docker.image("anuj12309/nodejs-app:${env.BUILD_ID}").push()
+                        docker.image("sasori12309-arch/nodejs-app:${env.BUILD_ID}").push()
                     }
                 }
             }
