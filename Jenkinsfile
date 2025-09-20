@@ -44,6 +44,7 @@ pipeline {
         stage('Security Scan') {
             steps {
                 script {
+                    sh 'mkdir -p ./reports'
                     // Download and install OWASP Dependency-Check
                     sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
                     sh 'unzip -q dependency-check.zip'
