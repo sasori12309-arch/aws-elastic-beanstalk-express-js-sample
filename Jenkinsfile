@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:16-bullseye'
-            args '-u root:root -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent none // No global agent - we'll define agents per stage
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
@@ -12,25 +7,48 @@ pipeline {
     
     stages {
         stage('Checkout') {
+            agent {
+                docker {
+                    image 'node:16-bullseye'
+                    args '-u root:root'
+                }
+            }
             steps {
                 checkout scm
             }
         }
         
         stage('Install Dependencies') {
+            agent {
+                docker {
+                    image 'node:16-bullseye'
+                    args '-u root:root'
+                }
+            }
             steps {
                 sh 'npm install --save'
             }
         }
         
         stage('Run Tests') {
+            agent {
+                docker {
+                    image 'node:16-bullseye'
+                    args '-u root:root'
+                }
+            }
             steps {
                 sh 'npm test'
             }
         }
         
-                
         stage('Security Scan') {
+            agent {
+                docker {
+                    image 'node:16-bullseye'
+                    args '-u root:root'
+                }
+            }
             steps {
                 script {
                     sh 'mkdir -p reports'
@@ -46,20 +64,23 @@ pipeline {
         }
         
         stage('Build Docker Image') {
+            agent any // Use the Jenkins host itself for Docker operations
             steps {
                 script {
-                    // Use Jenkins Docker Pipeline plugin to build the image
-                    dockerImage = docker.build("anuj12309/nodejs-app:${env.BUILD_ID}")
+                    // Build on the Jenkins host
+                    sh "docker build -t anuj12309/nodejs-app:${env.BUILD_ID} ."
                 }
             }
         }
         
         stage('Push Docker Image') {
+            agent any // Use the Jenkins host itself for Docker operations
             steps {
                 script {
-                    // Use Jenkins Docker Pipeline plugin to push the image
-                    docker.withRegistry('', 'dockerhub-credentials') {
-                        dockerImage.push()
+                    // Push from the Jenkins host
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                        sh "docker push anuj12309/nodejs-app:${env.BUILD_ID}"
                     }
                 }
             }
