@@ -1,9 +1,8 @@
 pipeline {
     agent {
         docker {
-            // Use the custom image with Node.js + Java
-            image 'sasori12309-arch/node16-java11'
-            args '-u root:root'
+            image 'node:18'        // Use Node.js 18 (newer, better supported)
+            args '-u root:root'    // Run as root to avoid permission issues
         }
     }
     
@@ -31,18 +30,29 @@ pipeline {
             }
         }
         
+       
         stage('Security Scan') {
             steps {
-                sh '''
-                mkdir -p ./reports
-                wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip
-                unzip -q dependency-check.zip
-                ./dependency-check/bin/dependency-check.sh \
-                    --scan . \
-                    --format HTML \
-                    --out ./reports/dependency-check-report.html \
-                    --project "Node.js App"
-                '''
+                script {
+                    // Create reports directory first
+                    sh 'mkdir -p ./reports'
+                    
+                    // Download and install OWASP Dependency-Check
+                    sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
+                    sh 'unzip -q dependency-check.zip'
+                    
+                    // Try to update database (may fail due to rate limiting)
+                    sh './dependency-check/bin/dependency-check.sh --updateonly || true'
+                    
+                    // Run scan with --noupdate to use local database
+                    sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App" --noupdate'
+                    
+                    // Check for vulnerabilities (optional - can remove if you just want the report)
+                    def report = readFile('./reports/dependency-check-report.html')
+                    if (report.contains('HIGH') || report.contains('CRITICAL')) {
+                        error('High or Critical vulnerabilities detected! Build failed.')
+                    }
+                }
             }
         }
         
@@ -66,7 +76,7 @@ pipeline {
     
     post {
         always {
-            // Archive Dependency-Check report
+            // Archive the Dependency-Check report (Task 4.2 requirement)
             archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
             cleanWs()
         }
@@ -78,4 +88,3 @@ pipeline {
         }
     }
 }
-
