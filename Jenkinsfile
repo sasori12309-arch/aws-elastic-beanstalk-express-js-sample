@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'node:16-bullseye'
-            args '-u root:root -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker CLI and socket
+            args '-u root:root -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     
@@ -29,32 +29,17 @@ pipeline {
             }
         }
         
-        stage('Install Java') {
-            steps {
-                sh '''
-                    apt-get update
-                    
-                '''
-            }
-        }
-        
+                
         stage('Security Scan') {
             steps {
                 script {
-                    // Create reports directory
                     sh 'mkdir -p reports'
-                    
-                    // Run npm audit - this will FAIL the build if high/critical vulnerabilities are found
-                    // The || true prevents the shell command from failing immediately
                     sh 'npm audit --audit-level=high || true'
-                    
-                    // Create a result file indicating the scan was completed
                     sh 'echo "Security scan completed successfully" > reports/security-scan-result.txt'
                 }
             }
             post {
                 always {
-                    // Archive the security scan result file
                     archiveArtifacts artifacts: 'reports/security-scan-result.txt', allowEmptyArchive: true
                 }
             }
@@ -63,8 +48,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Builds a Docker image of the app, tagging it with the build ID
-                    docker.build("anuj12309/nodejs-app:${env.BUILD_ID}")
+                    // Use Jenkins Docker Pipeline plugin to build the image
+                    dockerImage = docker.build("anuj12309/nodejs-app:${env.BUILD_ID}")
                 }
             }
         }
@@ -72,11 +57,9 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Logs in to Docker Hub using the credentials stored in Jenkins
-                    sh "echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin"
-                    // Pushes the image to your Docker Hub repository
+                    // Use Jenkins Docker Pipeline plugin to push the image
                     docker.withRegistry('', 'dockerhub-credentials') {
-                        docker.image("anuj12309/nodejs-app:${env.BUILD_ID}").push()
+                        dockerImage.push()
                     }
                 }
             }
