@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'node:16-bullseye'
-            args '-u root:root -v /usr/bin/docker:/usr/bin/docker' // Mount Docker CLI from host
+            args '-u root:root -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker CLI and socket
         }
     }
     
@@ -33,7 +33,7 @@ pipeline {
             steps {
                 sh '''
                     apt-get update
-                    apt-get install -y openjdk-11-jre-headless
+                    
                 '''
             }
         }
