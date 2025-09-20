@@ -90,13 +90,19 @@ pipeline {
     
     post {
         always {
-            cleanWs()
+            node('any') {
+                cleanWs()
+            }
         }
         success {
-            echo 'Pipeline completed successfully!'
+            node('any') {
+                echo 'Pipeline completed successfully!'
+            }
         }
         failure {
-            echo 'Pipeline failed! Check logs for details.'
+            node('any') {
+                echo 'Pipeline failed! Check logs for details.'
+            }
         }
     }
 }
