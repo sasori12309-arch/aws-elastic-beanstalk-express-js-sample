@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'node:18'
-            args '-u root:root'
+            image 'node:16-bullseye'
+            args '-u root:root -v /usr/bin/docker:/usr/bin/docker' // Mount Docker CLI from host
         }
     }
     
@@ -19,7 +19,7 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh 'npm install --save'
             }
         }
         
@@ -29,50 +29,31 @@ pipeline {
             }
         }
         
+        stage('Install Java') {
+            steps {
+                sh '''
+                    apt-get update
+                    apt-get install -y openjdk-11-jre-headless
+                '''
+            }
+        }
+        
         stage('Security Scan') {
             steps {
                 script {
-                    // Create the reports directory
-                    sh 'mkdir -p ./reports'
+                    sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
+                    sh 'unzip -q dependency-check.zip'
+                    sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App"'
                     
-                    // Create a minimal HTML security report for assignment purposes
-                    sh '''
-cat > ./reports/dependency-check-report.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dependency-Check Security Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { color: #333; }
-        .success { color: green; }
-        .info { color: blue; }
-    </style>
-</head>
-<body>
-    <h1>OWASP Dependency-Check Security Report</h1>
-    <p class="success">✓ Scan completed successfully</p>
-    <p class="info">Scan Date: $(date)</p>
-    <p class="info">Project: Node.js App</p>
-    <h2>Summary</h2>
-    <ul>
-        <li>Dependencies Scanned: 5</li>
-        <li>Vulnerabilities Found: 0</li>
-        <li>High Severity: 0</li>
-        <li>Medium Severity: 0</li>
-        <li>Low Severity: 0</li>
-    </ul>
-    <h2>Details</h2>
-    <p>No vulnerabilities were found in the scanned dependencies.</p>
-    <p><em>Note: This report was generated for educational purposes. 
-       Actual vulnerability scanning would require database updates 
-       that are rate-limited by the NVD.</em></p>
-</body>
-</html>
-EOF
-                    '''
-                    
-                    echo "Security scan completed successfully. Report generated at ./reports/dependency-check-report.html"
+                    def report = readFile('./reports/dependency-check-report.html')
+                    if (report.contains('HIGH') || report.contains('CRITICAL')) {
+                        error('High or Critical vulnerabilities detected! Build failed.')
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
                 }
             }
         }
@@ -89,7 +70,9 @@ EOF
             steps {
                 script {
                     sh "echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin"
-                    sh "docker push anuj12309/nodejs-app:${env.BUILD_ID}"
+                    docker.withRegistry('', 'dockerhub-credentials') {
+                        docker.image("anuj12309/nodejs-app:${env.BUILD_ID}").push()
+                    }
                 }
             }
         }
@@ -97,7 +80,6 @@ EOF
     
     post {
         always {
-            archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
             cleanWs()
         }
         success {
