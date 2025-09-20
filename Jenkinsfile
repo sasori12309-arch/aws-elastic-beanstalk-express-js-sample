@@ -1,8 +1,9 @@
 pipeline {
     agent {
         docker {
-            image 'node:16'        // Use Node.js 16 image
-            args '-u root:root'    // Run as root to avoid permission issues
+            // Use the custom image with Node.js + Java
+            image 'sasori12309-arch/node16-java11'
+            args '-u root:root'
         }
     }
     
@@ -65,7 +66,7 @@ pipeline {
     
     post {
         always {
-            // Archive the Dependency-Check report (Task 4.2 requirement)
+            // Archive Dependency-Check report
             archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
             cleanWs()
         }
