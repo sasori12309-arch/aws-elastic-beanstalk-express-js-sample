@@ -43,6 +43,7 @@ pipeline {
                 script {
                     sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
                     sh 'unzip -q dependency-check.zip'
+                    sh 'mkdir -p reports'
                     sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App"'
                     
                     def report = readFile('./reports/dependency-check-report.html')
