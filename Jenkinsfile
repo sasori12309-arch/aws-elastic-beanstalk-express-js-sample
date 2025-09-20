@@ -42,30 +42,32 @@ pipeline {
         }
         
         stage('Security Scan') {
-            steps {
-                script {
-                    sh 'mkdir -p ./reports'
-                    // Download and install OWASP Dependency-Check
-                    sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
-                    sh 'unzip -q dependency-check.zip'
-                    // Run the scanner. This generates an HTML report.
-                    sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App"'
-                    
-                    // Read the report to check for High/Critical vulnerabilities
-                    def report = readFile('./reports/dependency-check-report.html')
-                    if (report.contains('HIGH') || report.contains('CRITICAL')) {
-                        error('High or Critical vulnerabilities detected! Build failed.') // Fails the pipeline as required
-                    }
-                }
-            }
-            post {
-                always {
-                    // Always archive the security report, even if the build fails
-                    archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
-                }
+    steps {
+        script {
+            // Create the reports directory first
+            sh 'mkdir -p ./reports'
+            
+            // Download and install OWASP Dependency-Check
+            sh 'wget -q -O dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v8.2.1/dependency-check-8.2.1-release.zip'
+            sh 'unzip -q dependency-check.zip'
+            
+            // Run the scanner with --noupdate flag to avoid downloading during scan
+            sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App" --noupdate'
+            
+            // Read the report to check for High/Critical vulnerabilities
+            def report = readFile('./reports/dependency-check-report.html')
+            if (report.contains('HIGH') || report.contains('CRITICAL')) {
+                error('High or Critical vulnerabilities detected! Build failed.')
             }
         }
-        
+    }
+    post {
+        always {
+            // Always archive the security report, even if the build fails
+            archiveArtifacts artifacts: 'reports/dependency-check-report.html', fingerprint: true
+        }
+    }
+}
         stage('Build Docker Image') {
             steps {
                 script {
