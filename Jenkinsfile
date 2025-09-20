@@ -67,8 +67,10 @@ pipeline {
             agent any // Use the Jenkins host itself for Docker operations
             steps {
                 script {
-                    // Build on the Jenkins host
-                    sh "docker build -t anuj12309/nodejs-app:${env.BUILD_ID} ."
+                    // Build on the Jenkins host using the workspace directory
+                    dir("${env.WORKSPACE}") {
+                        sh "docker build -t anuj12309/nodejs-app:${env.BUILD_ID} ."
+                    }
                 }
             }
         }
@@ -77,7 +79,6 @@ pipeline {
             agent any // Use the Jenkins host itself for Docker operations
             steps {
                 script {
-                    // Push from the Jenkins host
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
                         sh "docker push anuj12309/nodejs-app:${env.BUILD_ID}"
