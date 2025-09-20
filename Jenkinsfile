@@ -1,5 +1,5 @@
 pipeline {
-    agent none // No global agent - we'll define agents per stage
+    agent any // No global agent - we'll define agents per stage
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
