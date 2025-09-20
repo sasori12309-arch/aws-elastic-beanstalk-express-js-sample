@@ -45,7 +45,7 @@ pipeline {
                     sh 'mkdir -p reports'
                     
                     // Use --noupdate to work offline (best for this assignment)
-                    sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App" --noupdate'
+                    sh './dependency-check/bin/dependency-check.sh --scan . --format HTML --out ./reports/dependency-check-report.html --project "Node.js App" --data https://mirror.example.com/nvd/'
                     
                     def report = readFile('./reports/dependency-check-report.html')
                     if (report.contains('HIGH') || report.contains('CRITICAL')) {
