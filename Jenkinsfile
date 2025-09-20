@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'node:16' // Uses Node.js 16 image as required
+            image 'node:16-jdk-bullseye' // Uses Node.js 16 with Java JDK
             args '-u root:root' // Runs as root to avoid file permission issues
         }
     }
