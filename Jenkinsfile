@@ -1,5 +1,5 @@
 pipeline {
-    agent any // No global agent - we'll define agents per stage
+    agent none
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
@@ -64,10 +64,9 @@ pipeline {
         }
         
         stage('Build Docker Image') {
-            agent any // Use the Jenkins host itself for Docker operations
+            agent { label 'built-in' } // Use the correct label
             steps {
                 script {
-                    // Build on the Jenkins host using the workspace directory
                     dir("${env.WORKSPACE}") {
                         sh "docker build -t anuj12309/nodejs-app:${env.BUILD_ID} ."
                     }
@@ -76,7 +75,7 @@ pipeline {
         }
         
         stage('Push Docker Image') {
-            agent any // Use the Jenkins host itself for Docker operations
+            agent { label 'built-in' } // Use the correct label
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -84,24 +83,6 @@ pipeline {
                         sh "docker push anuj12309/nodejs-app:${env.BUILD_ID}"
                     }
                 }
-            }
-        }
-    }
-    
-    post {
-        always {
-            node('any') {
-                cleanWs()
-            }
-        }
-        success {
-            node('any') {
-                echo 'Pipeline completed successfully!'
-            }
-        }
-        failure {
-            node('any') {
-                echo 'Pipeline failed! Check logs for details.'
             }
         }
     }
