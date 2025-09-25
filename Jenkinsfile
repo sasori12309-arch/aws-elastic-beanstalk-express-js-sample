@@ -58,7 +58,7 @@ pipeline {
             }
             post {
                 always {
-                    node {
+                    node('built-in') {
                         archiveArtifacts artifacts: 'reports/security-scan-result.txt', allowEmptyArchive: true
                     }
                 }
@@ -66,7 +66,7 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            agent { label 'built-in' }
+            agent { label 'built-in' } 
             steps {
                 script {
                     dir("${env.WORKSPACE}") {
@@ -77,7 +77,7 @@ pipeline {
         }
 
         stage('Push Docker Image') {
-            agent { label 'built-in' }
+            agent { label 'built-in' } 
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -91,7 +91,7 @@ pipeline {
 
     post {
         always {
-            node {
+            node('built-in') {
                 cleanWs()
             }
         }
