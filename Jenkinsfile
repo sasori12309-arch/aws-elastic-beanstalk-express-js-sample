@@ -52,8 +52,14 @@ pipeline {
             steps {
                 script {
                     sh 'mkdir -p reports'
-                    sh 'npm audit --audit-level=high || true'
-                    sh 'echo "Security scan completed successfully" > reports/security-scan-result.txt'
+                    // Run npm audit and save output
+                    sh '''
+                        npm audit --audit-level=high > reports/security-scan-result.txt
+                        if grep -q "found [1-9]" reports/security-scan-result.txt; then
+                            echo "High/Critical vulnerabilities detected! Failing build..."
+                            exit 1
+                        fi
+                    '''
                 }
             }
             post {
@@ -64,7 +70,7 @@ pipeline {
         }
         
         stage('Build Docker Image') {
-            agent { label 'built-in' } // Use the correct label
+            agent { label 'built-in' }
             steps {
                 script {
                     dir("${env.WORKSPACE}") {
@@ -75,7 +81,7 @@ pipeline {
         }
         
         stage('Push Docker Image') {
-            agent { label 'built-in' } // Use the correct label
+            agent { label 'built-in' }
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -84,6 +90,18 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed due to errors or vulnerabilities!'
         }
     }
 }
